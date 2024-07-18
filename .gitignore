@@ -1,1 +1,2 @@
-.sh
+*.sh
+.ipynb_checkpoints/
