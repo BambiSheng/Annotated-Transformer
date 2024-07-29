@@ -1,2 +1,5 @@
 *.sh
 .ipynb_checkpoints/
+*.out
+*.pt
+__pycache__/
