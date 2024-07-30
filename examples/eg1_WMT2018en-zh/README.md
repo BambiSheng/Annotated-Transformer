@@ -1,5 +1,6 @@
 # Example 1. Chinese to English Translation
 > We use the dataset [WMT 2018 zh-en](https://huggingface.co/datasets/wmt/wmt18/viewer/zh-en) to train a **Chinese to English** Machine Translation model, as a first example of Transformers.
+> This example shows the initial use that transformer is created for.
 
 ## File Structure
 - `./dataset` : Cache for preprocessed data, like vocabulary or tokenized texts.

@@ -33,7 +33,6 @@ def translate(src):
     assert src.max() < len(zh_vocab), "src contains index out of range"
     src = src.unsqueeze(0).to(device)
     tgt = torch.tensor([0]).unsqueeze(0).to(device)
-    print("src:", src)
     for _ in range(64):
         with torch.no_grad():
             output = model(src, tgt)
@@ -42,13 +41,11 @@ def translate(src):
             break
         pred = pred.unsqueeze(0)
         tgt = torch.cat([tgt, pred], dim=-1).to(device)
-        print(tgt)
-    tgt = ''.join(en_vocab.lookup_tokens(tgt.squeeze().tolist())).replace("<s>", "").replace("</s>", "")
+    tgt = ' '.join(en_vocab.lookup_tokens(tgt.squeeze().tolist())).replace("<s>", "").replace("</s>", "")
     return tgt
 
 while True:
     src = input("Input sentence: ")
-    print(src)
     if src == "exit":
         break
     tgt = translate(src)
