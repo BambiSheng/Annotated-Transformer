@@ -17,8 +17,7 @@ class T4T(nn.Module): # short for Transformer for Translation
     @staticmethod
     def make_std_mask(tgt, pad=2):
         "Create a mask to hide padding and future words."
-        "tgt: (batch_size, tgt_len, emb_dim)"
-        "mask: (batch_size, 1, tgt_len)"
-        tgt_mask = (tgt != pad).unsqueeze(-2)
-        tgt_mask = tgt_mask & subsequent_mask(tgt.size(-1)).type_as(tgt_mask.data)
+        "tgt: (batch_size, tgt_len)"
+        tgt_mask = (tgt != pad).unsqueeze(-2) # tgt_mask: (batch_size, 1, tgt_len)
+        tgt_mask = tgt_mask & subsequent_mask(tgt.size(-1)).type_as(tgt_mask.data) # tgt_mask: (batch_size, tgt_len, tgt_len)
         return tgt_mask

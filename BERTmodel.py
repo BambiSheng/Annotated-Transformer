@@ -1,8 +1,8 @@
 import torch.nn as nn
 from transformer import *
-class BERT(nn.Module):
+class BertEncoder(nn.Module):
     def __init__(self, vocab_size, max_len=1000, N=12, d_model=768, d_ff=768*4, h=12, dropout=0.1):
-        super(BERT, self).__init__()
+        super(BertEncoder, self).__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model)
         self.segment_emb = nn.Embedding(2, d_model)
         self.pos_emb = nn.Embedding(max_len, d_model)
@@ -18,7 +18,11 @@ class BERT(nn.Module):
         sum_emb = self.token_emb(tokens) + self.segment_emb(segments)
         positions = torch.arange(tokens.size(1)).unsqueeze(0).expand_as(tokens).to(tokens.device)
         sum_emb += self.pos_emb(positions)
-        return self.encoder(sum_emb, valid_lens)
+        mask = torch.zeros_like(tokens).to(tokens.device)
+        for i, valid_len in enumerate(valid_lens):
+            mask[i, :valid_len] = 1
+        mask = mask.unsqueeze(-2)
+        return self.encoder(sum_emb, mask)
 
 class MaskLM(nn.Module):
     def __init__(self, vocab_size, d_model=768, d_ff=768*4):
@@ -44,6 +48,29 @@ class MaskLM(nn.Module):
         return mlm_Y_hat
         
 class NSP(nn.Module):
-    def __init__(self, d):
+    def __init__(self, dim):
         super(NSP, self).__init__()
-        # TODO
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.Tanh(),
+        )
+        self.output = nn.Linear(dim, 2)
+
+    def forward(self, x):
+        return self.output(self.mlp(x))
+    
+class BERT(nn.Module):
+    def __init__(self, vocab_size, max_len=1000, N=12, d_model=768, d_ff=768*4, h=12, dropout=0.1):
+        super(BERT, self).__init__()
+        self.encoder = BertEncoder(vocab_size, max_len, N, d_model, d_ff, h, dropout)
+        self.masklm = MaskLM(vocab_size, d_model, d_ff)
+        self.nsp = NSP(d_model)
+
+    def forward(self, tokens, segments, valid_lens=None, pred_positions=None):
+        encoded_X = self.encoder(tokens, segments, valid_lens)
+        if pred_positions is not None:
+            mlm_Y_hat = self.masklm(encoded_X, pred_positions)
+        else:
+            mlm_Y_hat = None
+        nsp_Y_hat = self.nsp(encoded_X[:, 0, :])
+        return encoded_X, mlm_Y_hat, nsp_Y_hat
