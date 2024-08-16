@@ -14,14 +14,15 @@ class BertEncoder(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, tokens, segments, valid_lens):
+    def forward(self, tokens, segments, valid_lens = None, mask = None):
         sum_emb = self.token_emb(tokens) + self.segment_emb(segments)
         positions = torch.arange(tokens.size(1)).unsqueeze(0).expand_as(tokens).to(tokens.device)
         sum_emb += self.pos_emb(positions)
-        mask = torch.zeros_like(tokens).to(tokens.device)
-        for i, valid_len in enumerate(valid_lens):
-            mask[i, :valid_len] = 1
-        mask = mask.unsqueeze(-2)
+        if valid_lens is None:
+            mask = torch.zeros_like(tokens).to(tokens.device)
+            for i, valid_len in enumerate(valid_lens):
+                mask[i, :valid_len] = 1
+            mask = mask.unsqueeze(-2)
         return self.encoder(sum_emb, mask)
 
 class MaskLM(nn.Module):
