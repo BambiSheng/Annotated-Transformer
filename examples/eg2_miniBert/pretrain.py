@@ -8,34 +8,22 @@ import random
 from WikiTextDataset import WikiTextDataset
 import os
 import torch.nn as nn
-MODEL_TYPE = 'mini' # 'base' or 'mini'
+MODEL_TYPE = 'base' # 'base' or 'mini'
 # Parameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 max_len = 64
-batch_size = 512
+batch_size = 128
 dataset_cache_dir = 'dataset/train_set.pth'
 model_dir = './model'
 use_cache = True
+use_DDP = True # DistributedDataParallel
 
 # Data Preprocessing
 if use_cache and os.path.exists(dataset_cache_dir):
     print("loading dataset from cache.")
     train_set = torch.load(dataset_cache_dir)
 else: 
-    print("loading dataset from scratch.")
-    ds = datasets.load_dataset("carlosejimenez/wikitext__wikitext-2-raw-v1")
-    ds_train = ds["train"]
-    paras = []
-    for example in tqdm(ds_train):
-            if(len(example["text"].split(' . ')) < 2):
-                    continue
-            para = example["text"].strip().lower().split(" . ")
-            paras.append(para)
-    random.shuffle(paras)
-    train_set = WikiTextDataset(paras, max_len)
-    if not os.path.exists('dataset'):
-        os.makedirs('dataset')
-    torch.save(train_set, dataset_cache_dir)
+    raise Exception("No cache file found.")
 
 train_loader = torch.utils.data.DataLoader(train_set, batch_size,shuffle=True)
 
@@ -46,6 +34,12 @@ if MODEL_TYPE == 'base':
      model = BERT(vocab_size).to(device)
 elif MODEL_TYPE == 'mini':
     model = BERT(vocab_size, N=2, d_model=128, d_ff=256, h=2).to(device)
+
+
+# Use DataParallel for multi-GPU
+if use_DDP and torch.cuda.device_count() > 1:
+    print(f"Using {torch.cuda.device_count()} GPUs")
+    model = nn.DataParallel(model)
 
 loss = nn.CrossEntropyLoss(reduction='none')
 
@@ -72,7 +66,7 @@ def _get_batch_loss_bert(model, loss, vocab_size, tokens_X, segments_X, valid_le
     return mlm_l, nsp_l, l
 
 # Training
-lr, num_epochs, weight_decay = 1e-4, 100, 0.01
+lr, num_epochs, weight_decay = 1e-4, 10, 0.01
 mlm_l_list = []
 nsp_l_list = []
 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -82,7 +76,7 @@ for epoch in range(num_epochs):
     for i, (tokens_X, segments_X, valid_lens_x, pred_positions_X, mlm_weights_X, mlm_Y, nsp_y) in loop:
         tokens_X, segments_X, valid_lens_x, pred_positions_X, mlm_weights_X, mlm_Y, nsp_y = tokens_X.to(device), segments_X.to(device), valid_lens_x.to(device), pred_positions_X.to(device), mlm_weights_X.to(device), mlm_Y.to(device), nsp_y.to(device)
         optimizer.zero_grad()
-        mlm_l, nsp_l, l = _get_batch_loss_bert(model, loss, vocab_size, tokens_X, segments_X, valid_lens_x, pred_positions_X, mlm_weights_X, mlm_Y, nsp_y, i % 100 == 0)
+        mlm_l, nsp_l, l = _get_batch_loss_bert(model, loss, vocab_size, tokens_X, segments_X, valid_lens_x, pred_positions_X, mlm_weights_X, mlm_Y, nsp_y)
         l.backward()
         optimizer.step()
         loop.set_description(f'epoch {epoch + 1}')
@@ -90,6 +84,8 @@ for epoch in range(num_epochs):
         loop.update(1)
         mlm_l_list.append(mlm_l.item())
         nsp_l_list.append(nsp_l.item())
+    # save the model every epoch
+    torch.save(model.state_dict(), os.path.join(model_dir, MODEL_TYPE + 'BERT_checkpoint.pth'))
         
 
 # Save the model and vocab

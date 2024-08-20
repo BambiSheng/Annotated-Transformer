@@ -154,7 +154,8 @@ class WikiTextDataset(Dataset):
                 self.all_mlm_weights[idx], self.all_mlm_labels[idx],
                 self.nsp_labels[idx])
 if __name__ == "__main__":
-    ds = datasets.load_dataset("carlosejimenez/wikitext__wikitext-2-raw-v1")
+    from datasets import load_dataset
+    ds = load_dataset("Salesforce/wikitext", "wikitext-103-raw-v1")
     ds_train = ds["train"]
     paras = []
     for example in tqdm(ds_train):
@@ -166,6 +167,8 @@ if __name__ == "__main__":
     batch_size, max_len = 512, 64
     train_set = WikiTextDataset(paras, max_len)
     torch.save(train_set, 'train_set.pth')
+    # save vocab
+    torch.save(train_set.vocab, 'vocab.pth')
     train_loader = torch.utils.data.DataLoader(train_set, batch_size,shuffle=True)
 
     for (tokens_X, segments_X, valid_lens_x, pred_positions_X, mlm_weights_X,

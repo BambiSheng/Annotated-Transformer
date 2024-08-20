@@ -30,10 +30,22 @@ def predict_masked_text(masked_text, mask_token='<mask>'):
     print(pred_positions)
     
     _, mlm_Y_hat, _ = model(input_ids, token_type_ids, valid_len, pred_positions)
-    mlm_pred = mlm_Y_hat.argmax(dim=-1)
-    return vocab.get_itos()[mlm_pred.item()]
+
+    mlm_Y_hat = torch.functional.F.softmax(mlm_Y_hat, dim=-1).squeeze(0).squeeze(0)
+    # Get the top 5 predictions
+    topk_values, topk_indices = torch.topk(mlm_Y_hat, 5)
+    # Convert the predictions to tokens
+    topk_tokens = [vocab.get_itos()[index] for index in topk_indices]
+
+    # Convert the probabilities to a Python list
+    topk_probs = topk_values.tolist()
+
+    return list(zip(topk_tokens, topk_probs))
+
+
+    
 
 if __name__ == '__main__':
-    masked_text = 'Paris is the capital <mask> France.'
+    masked_text = 'I went on vacation to beijing this summer. <mask> visited the Great Wall.'
     print(predict_masked_text(masked_text))
 
