@@ -16,7 +16,7 @@ batch_size = 128
 dataset_cache_dir = 'dataset/train_set.pth'
 model_dir = './model'
 use_cache = True
-use_DDP = True # DistributedDataParallel
+use_DP = True # DataParallel
 
 # Data Preprocessing
 if use_cache and os.path.exists(dataset_cache_dir):
@@ -37,7 +37,7 @@ elif MODEL_TYPE == 'mini':
 
 
 # Use DataParallel for multi-GPU
-if use_DDP and torch.cuda.device_count() > 1:
+if use_DP and torch.cuda.device_count() > 1:
     print(f"Using {torch.cuda.device_count()} GPUs")
     model = nn.DataParallel(model)
 

@@ -22,7 +22,7 @@ batch_size = 64
 dataset_cache_dir = './dataset'
 model_dir = './model'
 use_cache = True
-use_DDP = True # DistributedDataParallel
+use_DP = True # DataParallel
 pretrain_model_path = '../eg2_miniBert/model/miniBERT.pth'
 
 # Data Preprocessing
@@ -78,7 +78,7 @@ elif MODEL_TYPE == 'mini':
     model = BertForQA(bert, d_model=128)
 
 # Use DataParallel for multi-GPU
-if use_DDP and torch.cuda.device_count() > 1:
+if use_DP and torch.cuda.device_count() > 1:
     print(f"Using {torch.cuda.device_count()} GPUs")
     model = nn.DataParallel(model)
 

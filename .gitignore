@@ -5,3 +5,5 @@
 *.pth
 __pycache__/
 checkpoint*/
+ignore/
+*.npy
